@@ -17,3 +17,30 @@
 ## 致谢
 
 感谢原论文所有作者的开源贡献，本项目仅用于学术学习与研究。
+
+---
+### 如何开始
+
+1. **克隆仓库**
+
+```bash
+git clone <repository-url>
+cd GardenDesigner
+```
+
+2. **创建虚拟环境**
+```bash
+# 创建python环境
+conda create -n gardendesigner python=3.8.20
+# 激活python环境
+conda activate gardendesigner
+
+# 注意这里推荐使用minconda来创建环境
+# 当然你也可以选择uv或者其他方案 但是确保python的版本
+```
+
+3. **下载开发依赖**
+```bash
+pip install -e .
+# 会下载pyproject.toml说明的相关依赖
+```
