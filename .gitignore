@@ -1,0 +1,9 @@
+# 忽略Python字节码缓存目录及文件（全局生效）
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 忽略所有.egg-info/.egg.info构建目录
+*.egg-info/
+*.egg.info/

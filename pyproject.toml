@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0","wheel"]
+build-backend = "setuptools.build_meta"
+[project]
+# 基础元信息
+name = "gardendesigner"
+readme = "README.md"
+requires-python = "==3.8.20"
+# 核心依赖
+dependencies = [
+   
+]
+# 项目链接
+urls = {
+    "Homepage" = "https://github.com/Ricardo-shuo-liu/GardenDesigner",
+    "Bug Tracker" = "https://github.com/Ricardo-shuo-liu/GardenDesigner/issues"
+}
+
+
+[tool.setuptools]
+packages.find = { 
+    where = ["."],         
+    include = ["gardendesigner*"],  
+}
+include-package-data = true
