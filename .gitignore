@@ -7,3 +7,6 @@ __pycache__/
 # 忽略所有.egg-info/.egg.info构建目录
 *.egg-info/
 *.egg.info/
+
+
+.vscode/settings.json
