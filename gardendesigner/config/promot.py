@@ -10,9 +10,7 @@ GardenDesigner: Encoding Aesthetic Principles into Jiangnan Garden Construction 
 """
 
 
-from enum import Enum
-
-class Promot(Enum):
+class Promot():
     terrain_sys_prompt = """You are a Jiangnan gardens designer, please assist me to convert the user input into parameters regarding the terrain, which will help the design of a landscape on a two-dimensional discrete rectangular grid (e.g., 20*15 cells). 
     The designer decides to assign each cell a type of terrain from the following five types, each with its own integer code: Unused (0), Aquatic (1), Terrestrial (2), Artificial (3), and Elevated (4). 
     - "Unused" indicates that the cell is excluded from the site, allowing the landscape's shape to vary.
@@ -367,3 +365,26 @@ class Promot(Enum):
         }
     }
     """
+    def __init__(self, **kwargs):
+        for key, val in kwargs.items():
+            if hasattr(self, key):
+                if isinstance(val, type(getattr(self, key))):
+                    setattr(self, key, val)
+                else:
+                    raise TypeError(f"Wrong type for {key} - {val}")
+            else:
+                raise ValueError(f"{key} is not configurable")
+
+    def set(self, **kwargs) -> None:
+        for key, val in kwargs.items():
+            if hasattr(Promot, key):
+                if isinstance(val, type(getattr(Promot, key))):
+                    setattr(Promot, key, val)
+                else:
+                    raise TypeError(f"Wrong type for {key} - {val}")
+            else:
+                raise ValueError(f"{key} is not configurable")
+
+    def overwrite(self, **kwargs) -> "Promot":
+        ret = Promot(**kwargs)
+        return ret
