@@ -33,42 +33,60 @@ def main():
         "-t",
         type=str,
         default="A wonderful scape with mountains, water and forests, with almost no artificial traces.",
+        help="你想要生成的园林文字描述",
     )
     parser.add_argument(
         "--edit",
         "-e", 
-        action="store_true"
+        action="store_true",
+        help="是否开启手动编辑模式"
     )
     parser.add_argument(
         "--gen_edit_garden",
         "-g", 
-        action="store_true"
+        action="store_true",
+        help="是否生成编辑后的园林"
     )
     parser.add_argument(
         "--regenerate_infrastructure",
         "-i", 
-        action="store_true"
+        action="store_true",
+        help="重新生成道路、入口、关键点"
     )
     parser.add_argument(
         "--regenerate_attributes",
         "-a", 
-        action="store_true"
+        action="store_true",
+        help="重新生成花草、建筑、景观"
     )
     parser.add_argument(
         "--use_conlan",
         "-u", 
-        action="store_true"
+        action="store_true",
+        help="使用高级景观生成规则"
     )
     parser.add_argument(
         "--use_conlan_layout",
         "-l", 
-        action="store_true"
+        action="store_true",
+        help="使用 Conlan 布局规则"
     )
 
-    parser.add_argument("--query", "-q", action="store_true")
-    parser.add_argument("--seed", "-s", type=int, default=int(datetime.now().timestamp()))
-    parser.add_argument("--checkpoint", "-c", type=str, default="0")
-    parser.add_argument("--num", "-n", type=int, default=1)
+    parser.add_argument("--query", "-q", 
+                        action="store_true",
+                        help="调用 GPT API 解析你的文字描述")
+    parser.add_argument("--seed", "-s", 
+                        type=int, 
+                        default=int(datetime.now().timestamp()),
+                        help="随机种子")
+    parser.add_argument("--checkpoint", "-c", 
+                        type=str, 
+                        default="0",
+                        help="加载之前保存的地图")
+    parser.add_argument("--num", "-n", 
+                        type=int, 
+                        default=1,
+                        help="一次性生成多少张地图")
     args = parser.parse_args()
 
 
