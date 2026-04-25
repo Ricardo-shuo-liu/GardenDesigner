@@ -10,9 +10,8 @@ GardenDesigner: Encoding Aesthetic Principles into Jiangnan Garden Construction 
 """
 
 
-from enum import Enum
 
-class Prompt(Enum):
+class Prompt():
     terrain_sys_prompt = """You are a Jiangnan gardens designer, please assist me to convert the user input into parameters regarding the terrain, which will help the design of a landscape on a two-dimensional discrete rectangular grid (e.g., 20*15 cells). 
     The designer decides to assign each cell a type of terrain from the following five types, each with its own integer code: Unused (0), Aquatic (1), Terrestrial (2), Artificial (3), and Elevated (4). 
     - "Unused" indicates that the cell is excluded from the site, allowing the landscape's shape to vary.
@@ -152,7 +151,8 @@ class Prompt(Enum):
         "feedback":"OK"
     }"""
 
-    attribute_sys_prompt = """You are a landscape architect who understands what a designer needs. Your task is to convert the user input into parameters regarding the "attributes", which will help the design of a landscape on a two-dimensional discrete rectangular grid (e.g., 20*20 cells).
+    attribute_sys_prompt = """
+    You are a landscape architect who understands what a designer needs. Your task is to convert the user input into parameters regarding the "attributes", which will help the design of a landscape on a two-dimensional discrete rectangular grid (e.g., 20*20 cells).
     The designer decides to assign each cell a type of "attribute" from the following five types, each with its own integer code: None (0), Basic (1), Low-growing (2), Tall-growing (3), and Architectural (4). 
     - "None" indicates that no explicit development is needed for the cell, leaving it as raw terrain.
     - "Basic" recommends fundamental and typical vegetation for the terrain, such as grass, weeds, and rocks.
@@ -223,8 +223,9 @@ class Prompt(Enum):
 
 
 
-    # 
-    object_selection_prompt = """You are an experienced Jiangnan garden designer, please assist me in selecting architectures, plants, rocks for multiple areas. 
+    # Prompts for the asset selection agent.
+    object_selection_prompt = """
+    You are an experienced Jiangnan garden designer, please assist me in selecting architectures, plants, rocks for multiple areas. 
     I will provide (1) the area list including area size and adjacent information; and area number, (2) object description in the file provided for file search and (3) the user instruction. 
     You need to select appropriate objects consider these information.
 
@@ -276,8 +277,9 @@ class Prompt(Enum):
 
 
     # constraints selection
-
-    object_constraints_prompt = """You are an experienced Jiangnan gardens designer. Please help me arrange objects in the garden by assigning constraints to each object.
+    #布局优化智能体提示词
+    object_constraints_prompt = """
+    You are an experienced Jiangnan gardens designer. Please help me arrange objects in the garden by assigning constraints to each object.
     I will provide (1) the area list including area size and adjacent information, (2) selected objects for each area, (3) object description in the file provided for file search and (4) the user instruction. 
     You need to select appropriate objects consider these information.
 
