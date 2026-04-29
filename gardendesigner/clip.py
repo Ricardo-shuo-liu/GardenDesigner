@@ -3,6 +3,7 @@ from datetime import datetime
 from gardendesigner.config.param import (
     EnvFiler,
     GetEnvParam)
+import core
 def main():
     """
     命令行逻辑
@@ -112,3 +113,8 @@ def main():
         builder.make(key=args.key,model=args.model,base_url=args.base_url)
     geter = GetEnvParam(config_path=config_path)
     # TODO 核心功能逻辑
+    core.main(args,
+              args.text,
+              args.query,
+              args.checkpoint,
+              args.num,geter)

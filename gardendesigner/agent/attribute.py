@@ -45,7 +45,10 @@ class AttributeAgent(BaseAgent):
                             text:str) -> Tuple[dict, str]:
         """数据提取"""
         dic = {}
-        keys = ["attribute_exist", "attribute_region_num", "attribute_region_area", "attribute_region_single_area"]
+        keys = ["attribute_exist",
+                "attribute_region_num",
+                "attribute_region_area",
+                "attribute_region_single_area"]
         for key in keys:
             dic[key] = [-1 for _ in range(5)]
 
