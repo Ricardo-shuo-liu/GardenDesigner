@@ -1,7 +1,9 @@
+# 设置环境变量文件 读取环境变量数据 定义constant
+
 import pathlib
 from dotenv import load_dotenv
 import os
-
+from typing import Annotated
 
 class EnvFiler():
     def __init__(self):
@@ -47,3 +49,34 @@ class GetEnvParam():
         BASE_URL = os.getenv(key="BASE_URL")
         if BASE_URL:
             return BASE_URL
+class BaseParam():
+    MAX_GENERATION:Annotated[int,"最多进化多少代"] = 100
+    MUTATION_RATE:Annotated[float,"变异概率"]= 0.7
+    CROSSOVER_RATE:Annotated[float,"杂交概率"] = 0.9
+    POPULATION_SIZE:Annotated[int,"种群数量"] = 100
+    def __init__(self, **kwargs):
+        # 初始化
+        for key, val in kwargs.items():
+            if hasattr(self, key):
+                if isinstance(val, type(getattr(self, key))):
+                    setattr(self, key, val)
+                else:
+                    raise TypeError(f"Wrong type for {key} - {val}")
+            else:
+                raise ValueError(f"{key} is not configurable")
+
+    def set(self, **kwargs) -> None:
+        # 修改全局数据
+        for key, val in kwargs.items():
+            if hasattr(BaseParam, key):
+                if isinstance(val, type(getattr(BaseParam, key))):
+                    setattr(BaseParam, key, val)
+                else:
+                    raise TypeError(f"Wrong type for {key} - {val}")
+            else:
+                raise ValueError(f"{key} is not configurable")
+
+    def overwrite(self, **kwargs) -> "BaseParam":
+        # 临时启用数据
+        ret = BaseParam(**kwargs)
+        return ret

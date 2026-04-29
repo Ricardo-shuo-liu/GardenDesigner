@@ -1,7 +1,7 @@
 from gardendesigner.agent import BaseAgent
 import logging
 import json
-from typing import List,Tuple
+from typing import List,Tuple,Callable
 class TerrainGenerationAgent(BaseAgent):
     def __init__(self, agent_name="terrain",
                  llm_model = "gpt-4o",
@@ -17,8 +17,7 @@ class TerrainGenerationAgent(BaseAgent):
                          llm_temperature,
                          output_dir,
                          log_level)
-        pass
-
+        # 调用父类初始化
     def _call_llm(self,
                   system_messages: List[dict], 
                   text: str) -> str:
@@ -50,6 +49,12 @@ class TerrainGenerationAgent(BaseAgent):
                 "terrain_region_num",
                 "terrain_region_area",
                 "terrain_region_single_area"]
+       # terrain_exist	5 类地形是否存在
+       # terrain_region_num	每类地形区域数量上下限
+       # terrain_region_area	每类地形总占地比例上下限
+       # terrain_region_single_area	每类地形单个地块比例上下限
+       # max_hill_height	高地最大高度
+       # 0: Unused（未使用）1: Aquatic（水域）2: Terrestrial（陆地）3: Artificial（人工 / 建筑）4: Elevated（高地）
         for key in keys:
             dic[key] = [-1 for _ in range(5)]
         dic["max_hill_height"] = -1
@@ -84,4 +89,14 @@ class TerrainGenerationAgent(BaseAgent):
         except Exception as e:
             print("parse exception:", e)
             return dic, "GPT response parsing error"
-    
+    def _algorithm(self,
+                   args,
+                   parameters: dict) -> List[List[int]]:
+        """遗传算法生成地形"""
+        from gardendesigner.algorithm.genetic import GeneticAlgorithm
+        genetic_algorithm = GeneticAlgorithm()
+        genetic_algorithm.excute(
+            args=args,
+            parameters=parameters
+        )
+        # 调用算法
