@@ -54,6 +54,10 @@ class BaseParam():
     MUTATION_RATE:Annotated[float,"变异概率"]= 0.7
     CROSSOVER_RATE:Annotated[float,"杂交概率"] = 0.9
     POPULATION_SIZE:Annotated[int,"种群数量"] = 100
+    PRESERVE_BEST_SIZE:Annotated[int,"用最优秀个体填充的数量"] = 5
+    FIX_RATE:Annotated[float,"启动修复比例"] = 0.1
+    W:Annotated[int,"地图网格宽度"] = 20
+    H:Annotated[int,"地图网格长度"] = 15
     def __init__(self, **kwargs):
         # 初始化
         for key, val in kwargs.items():
