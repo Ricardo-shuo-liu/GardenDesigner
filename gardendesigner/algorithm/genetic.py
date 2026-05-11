@@ -1,10 +1,10 @@
 from typing import List,Callable,Tuple
-from gardendesigner.config.param import BaseParam
+from gardendesigner.algorithm import Algorithm
 from copy import deepcopy
 import random
-class GeneticAlgorithm():
+class GeneticAlgorithm(Algorithm):
     def __init__(self):
-        self.baseparam = BaseParam()
+        super().__init__()
     def excute(self,
                args,
                parameters: dict) -> List[List[int]]:
@@ -14,7 +14,7 @@ class GeneticAlgorithm():
                     parameters,
                     5,
                     terrain_fitness,
-                    terrain_evo,
+                    self.terrain_evo,
                     100,
                     self.baseparam.MAX_GENERATION,
                     self.baseparam.MUTATION_RATE,
@@ -26,7 +26,7 @@ class GeneticAlgorithm():
                     parameters,
                     5,
                     terrain_fitness_with_loc,
-                    terrain_evo,
+                    self.terrain_evo,
                     100,
                     self.baseparam.MAX_GENERATION,
                     self.baseparam.MUTATION_RATE,
@@ -175,75 +175,244 @@ class GeneticAlgorithm():
         components2 = self.find_connected_components(parent2, {}, n)
 
         # TODO 交叉核心
-    def find_connected_components(self,
-                                  grid: List[List[int]],
-                                  split_edges: dict, 
-                                  n: int) -> List[list]:
-        """
-        寻找连接在一起的相同区域
+        randx, randy, comp_idx1, comp_idx2, type1, type2 = [None for _ in range(6)]
+        success = False
+        comp_idx1, comp_idx2 = None, None
+        for k in range(10): # 随机获取最多10次
+            randx, randy = random.randint(0, self.baseparam.W - 1), random.randint(0, self.baseparam.H - 1)
+            comp_idx1, comp_idx2 = None, None
+            for i in range(n):
+                for j in range(len(components1[i])):
+                    if (randx, randy) in components1[i][j]:
+                        type1 = i
+                        comp_idx1 = (i, j)
+                        break
+                if comp_idx1 != None:
+                    break
+            for i in range(n):
+                for j in range(len(components2[i])):
+                    if (randx, randy) in components2[i][j]:
+                        type2 = i
+                        comp_idx2 = (i, j)
+                        break
+                if comp_idx2 != None:
+                    break
+            if type1 != type2:
+                success = True
+                break
+        if not success: # 如果两块type一样
+            return parent1, parent2
+        # 获得对应的区块信息
+        comp1, comp2 = components1[comp_idx1[0]][comp_idx1[1]], components2[comp_idx2[0]][comp_idx2[1]]
+        # 获取共同部分
+        intersection = set(comp1).intersection(set(comp2))
+        # 计算比例
+        intersection_rate = len(intersection) / (len(comp1) + len(comp2) - len(intersection))
 
-        Args:
-            grid(List[List[int]]):要寻找的区域
-            split_edges(dict):墙
-            n(int):地形数量
-        Returns:
-            components(List[list]):链接在一起的区域
-        """
-        def is_valid(x, y):
-            # Check if the coordinates are within the grid boundaries
-            return 0 <= x < self.baseparam.W and 0 <= y < self.baseparam.H
-        def dfs(
-            x:int,
-            y:int,
-            component_id:int):
-            """深度优先用于标记区域"""
-            stack = [(x, y)]
-            component = []
-            dx_dys = [(0, 1), (0, -1), (1, 0), (-1, 0)]# 四个探索方向
-            while stack:
-                current_x, current_y = stack.pop()
-                if component_labels[current_x][current_y] != -1:
-                    continue
-                component_labels[current_x][current_y] = component_id
-                component.append((current_x, current_y))
+        use_approx = random.random() < self.baseparam.CROSSOVER_APPROX_RATE
+        # 是否全部交换
+        if use_approx:
+            if intersection_rate < self.baseparam.CROSSOVER_APPROX_ACCEPT_RATE: 
+                # 如果重合度不够高
+                return parent1, parent2
+            else:
+                # 区块全部交换
+                for x, y in comp1:
+                    parent1[x][y] = type2
+                for x, y in comp2:
+                    parent2[x][y] = type1
+                return parent1, parent2
+        else:
+            # 只交换重叠部分
+            for x, y in intersection:
+                parent1[x][y] = type2
+                parent2[x][y] = type1
+            return parent1, parent2
+    def mutation(self,
+                 grid: List[List[int]],
+                 n: int) -> List[List[int]]:
+        """变异"""
+        # 随机获取变异区域
+        randw, randh = random.randint(self.baseparam.MUTATION_MINL, self.baseparam.MUTATION_MAXL), random.randint(self.baseparam.MUTATION_MINL, self.baseparam.MUTATION_MAXL)
+        randx, randy = random.randint(0, self.baseparam.W - randw), random.randint(0, self.baseparam.H - randh)
+        # 概率选择变异情况
+        region_mutation = random.random() < self.baseparam.REGION_MUTATION_RATE
+        consistent_mutation = random.random() < self.baseparam.MUTATION_CONSISTENT_RATE
+
+        if region_mutation:
+            components = self.find_connected_components(grid, {}, n)
+            components_count = 0
+            for i in range(n):
+                components_count += len(components[i])
+            
+            rand_idx = random.randint(0, components_count - 1)
+            component_type, component = None, None
+            # 找到随机到的连通块的位置
+            for i in range(n):
+                if rand_idx < len(components[i]):
+                    component_type = i
+                    component = components[i][rand_idx]
+                    break
+                rand_idx -= len(components[i])
+            new_type = random.randint(0, n - 1)
+            # 抽取一个和当前不同的type用于替换
+            while new_type == component_type:
+                new_type = random.randint(0, n - 1)
+            for x, y in component:
+                grid[x][y] = new_type
+        else:
+            # 如果和周围的type一样
+            if consistent_mutation:
+                randtype = None
+                # 存储周围的类别信息
+                adjacent_types = set()
+                # 矩阵大小+1 用于获取type
+                for i in range(randx - 1, randx + randw + 1):
+                    for j in range(randy - 1, randy + randh + 1):
+                        if (
+                        0 <= i < self.baseparam.W
+                        and (i == randx - 1 or i == randx + randw)
+                        and 0 <= j < self.baseparam.H
+                        and (j == randy - 1 or j == randy + randh)):
+                            adjacent_types.add(grid[i][j])
+                if len(adjacent_types) == 0:
+                    randtype = random.randint(0, n - 1)
+                else:
+                    # 随机挑选一个类别
+                    randtype = random.choice(list(adjacent_types))
+                for i in range(randw):
+                    for j in range(randh):
+                        grid[randx + i][randy + j] = randtype      
+            else:
+                # 随机选者type
+                randtype = random.randint(0, n - 1)
+                for i in range(randw):
+                    for j in range(randh):
+                        grid[randx + i][randy + j] = randtype
+        
+        return grid
+    def terrain_evo(self,
+                    grid: List[List[int]],
+                    parameters: dict,
+                    terrain,
+                    infrastructure) -> List[List[int]]:
+        """修复函数"""
+        components = self.find_connected_components(grid, {}, 5)
+        # 获取五个地形是否存在
+        terrain_exist = deepcopy(parameters["terrain_exist"])
+        for tp in range(5):
+            exist = terrain_exist[tp]
+            real_region_num = len(components[tp])
+            # 如果地形不存在但是生成的时候生成相关地形
+            if exist == 0 and real_region_num > 0:
+                # 将该地形全部转化为陆地 2
+                for component in components[tp]:
+                    for x, y in component:
+                        grid[x][y] = 2
+                return grid
+            # 如果这个地形存在但是没有生成
+            elif exist == 1 and real_region_num == 0:
+                # 随机生存一个区域设置为该类型
+                randw, randh = random.randint(2, 4), random.randint(2, 4)
+                randx, randy = random.randint(0, self.baseparam.W - randw), random.randint(0, self.baseparam.H - randh)
+                for i in range(randw):
+                    for j in range(randh):
+                        grid[randx + i][randy + j] = tp
+                return grid
+        dx_dys = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        # 对于未定义的区域
+        for component in components[0]:
+            types_count = [0 for _ in range(6)]
+            for x, y in component:
                 for dx, dy in dx_dys:
-                    new_x, new_y = current_x + dx, current_y + dy
-                    # 这里使用的是网格表示范 x，y标识一个网格 然后(x,y)(x+1,y),(x,y+1) (x+1,y+1)
-                    # 表示四个定点 split_edge 为一个格子上的边
-                    if dx == 0 and dy == 1:
-                        split_edge = ((current_x, current_y + 1), (current_x + 1, current_y + 1))
-                    elif dx == 0 and dy == -1:
-                        split_edge = ((current_x, current_y), (current_x + 1, current_y))
-                    elif dx == 1 and dy == 0:
-                        split_edge = ((current_x + 1, current_y), (current_x + 1, current_y + 1))
-                    elif dx == -1 and dy == 0:
-                        split_edge = ((current_x, current_y), (current_x, current_y + 1))
-                    # not overstep; adjacent grids have same terrain type; 
-                    if (
-                        is_valid(new_x, new_y)
-                        and grid[new_x][new_y] == grid[x][y] # why not current_x/y
-                        and ((split_edge not in split_edges) or split_edges[split_edge] == 0)
-                    ):
-                        stack.append((new_x, new_y))
+                    new_x, new_y = x + dx, y + dy
 
-            return component
-
-        component_labels = [[-1 for _ in range(self.baseparam.H)] for _ in range(self.baseparam.W)]
-        # 设置mask用于记录是否探索过
-        components = [[] for _ in range(n)]
-        # 返回对象
-        component_id = 0
-        # 记录区域id
-
-        for x in range(self.baseparam.W):
-            for y in range(self.baseparam.H):
-                # 遍历每一个格子
-                if component_labels[x][y] == -1:
-                    # 如果没被探索
-                    component = dfs(x, y, component_id) 
-                    components[grid[x][y]].append(component)
-                    component_id += 1
-
-        return components
-    def mutation(self,):
-        pass
+                    if 0 <= new_x < self.baseparam.W and 0 <= new_y < self.baseparam.H:
+                        # 如果附近的格子不在当前区域内
+                        if (new_x, new_y) not in component:
+                            types_count[grid[new_x][new_y]] += 1
+                    # 如果不合法 最后的类别加一
+                    else:
+                        types_count[-1] += 1
+            # 如果这个未使用的地区没有依靠在地图边界 将其转化为合法正常类型
+            if types_count[-1] == 0:
+                # 在允许存在的地形里面选择填充地形
+                # 在官方的GitHub的代码中这里存在逻辑错误会生成不允许存在的地形
+                allowed = [tp for tp in range(1,5) if terrain_exist[tp] == 1]
+                new_type = random.choice(allowed)
+                for x, y in component:
+                    grid[x][y] = new_type
+                return grid
+        return grid
+    
+    def get_boundary(self,
+                     grid: List[List[int]],
+                     get: bool = False) -> Tuple[bool, List[Tuple[int, int]]]:
+        """判断是否联通并且选择获取边缘的轮廓点"""
+        new_grid = deepcopy(grid)
+        # 遍历地图上每一个点
+        for i in range(self.baseparam.W):
+            for j in range(self.baseparam.H):
+                # 将所有的使用的点的type转化为1用于判断是否联通
+                if new_grid[i][j] != 0:
+                    new_grid[i][j] = 1
+        components = self.find_connected_components(new_grid, {}, 2)
+        # 判断是否联通
+        if len(components[1]) != 1:
+            return False, []
+        
+        if not get:
+            return True, []
+        # 存储边界数据
+        boundary_edges = []
+        for i in range(self.baseparam.W):
+            # 增加一个用于下边界
+            for j in range(self.baseparam.H + 1):
+                # 上界
+                if j == 0:
+                    if new_grid[i][j] == 1:
+                        boundary_edges.append([(i, j), (i + 1, j)])
+                # 下界
+                elif j == self.baseparam.H:
+                    if new_grid[i][j - 1] == 1:
+                        boundary_edges.append([(i, j), (i + 1, j)])
+                # 分割
+                elif new_grid[i][j - 1] != new_grid[i][j]:
+                    boundary_edges.append([(i, j), (i + 1, j)])
+        for i in range(self.baseparam.W + 1):
+            # 增加一个用于判断右边界
+            for j in range(self.baseparam.H):
+                #  左界
+                if i == 0:
+                    if new_grid[i][j] == 1:
+                        boundary_edges.append([(i, j), (i, j + 1)])
+                # 右界
+                elif i == self.baseparam.W:
+                    if new_grid[i - 1][j] == 1:
+                        boundary_edges.append([(i, j), (i, j + 1)])
+                # 分割
+                elif new_grid[i - 1][j] != new_grid[i][j]:
+                    boundary_edges.append([(i, j), (i, j + 1)])
+        # 起点
+        ordered_boundary_corners = [boundary_edges[0][0]]
+        # 依据起点实现围绕成圈
+        while True:
+            corner = ordered_boundary_corners[-1]
+            for edge in boundary_edges:
+                if edge[0] == corner:
+                    ordered_boundary_corners.append(edge[1])
+                    boundary_edges.remove(edge)
+                    break
+                elif edge[1] == corner:
+                    ordered_boundary_corners.append(edge[0])
+                    boundary_edges.remove(edge)
+                    break
+            if ordered_boundary_corners[-1] == ordered_boundary_corners[0]:
+                break
+        return True, ordered_boundary_corners[:-1]
+    def terrain_fitness(self,
+                        grid: List[List[int]],
+                        parameters: dict,
+                        terrain, infrastructure) -> float:
+        """打分函数"""
+        connected, _ = self.get_boundary(grid)

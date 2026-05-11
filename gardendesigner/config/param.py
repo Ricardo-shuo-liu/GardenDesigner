@@ -58,6 +58,12 @@ class BaseParam():
     FIX_RATE:Annotated[float,"启动修复比例"] = 0.1
     W:Annotated[int,"地图网格宽度"] = 20
     H:Annotated[int,"地图网格长度"] = 15
+    CROSSOVER_APPROX_RATE:Annotated[float,"整块交叉概率"] = 0.5
+    CROSSOVER_APPROX_ACCEPT_RATE:Annotated[float,"重叠度阈值"] = 0.6
+    MUTATION_MINL:Annotated[int,"变异区域的最小长度"] = 2 
+    MUTATION_MAXL:Annotated[int,:"变异区域的最大长度"] = 4
+    REGION_MUTATION_RATE:Annotated[float,"修改一整块连通区域阈值"] = 0.2  
+    MUTATION_CONSISTENT_RATE:Annotated[float,"和周围type保持一致阈值"] = 0.5 
     def __init__(self, **kwargs):
         # 初始化
         for key, val in kwargs.items():
