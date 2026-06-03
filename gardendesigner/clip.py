@@ -110,7 +110,9 @@ def main():
     builder = EnvFiler()
     config_path = builder.get_config_path()
     if args.key:
-        builder.make(key=args.key,model=args.model,base_url=args.base_url)
+        builder.make(key=args.key,
+                     model=args.model,
+                     base_url=args.base_url)
     geter = GetEnvParam(config_path=config_path)
     # TODO 核心功能逻辑
     core.main(args,

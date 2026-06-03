@@ -1,7 +1,7 @@
 import abc
 from gardendesigner.config.param import BaseParam
 from typing import List
-class Algorithm(abc.ABC):
+class BaseAlgorithm(abc.ABC):
     def __init__(self):
         self.baseparam = BaseParam()
     def find_connected_components(self,
