@@ -92,20 +92,20 @@ class BaseAgent(abc.ABC):
     @abc.abstractmethod
     def _algorithm(self):
         raise
-    @abc.abstractmethod
-    def execute(self,user_promot):
-        raise
 
 
-class Pipeline(abc.ABC):
+class BasePipeline(abc.ABC):
 
     def __init__(self,agents:List[BaseAgent]):
         super().__init__()
         if not agents:
             raise ValueError("agents列表不能为空")
         self.agents = agents
-        self.pipeline_output: Optional[Dict[str, Any]] = None
+        self.pipeline_output= []
 
     @abc.abstractmethod
     def run(self):
+        raise
+    @abc.abstractmethod
+    def _check(self):
         raise

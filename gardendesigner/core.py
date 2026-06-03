@@ -5,6 +5,7 @@ from gardendesigner.agent.inf import RoadGenErationAgent
 from gardendesigner.config.prompt import Prompt
 from gardendesigner.agent.attribute import AttributeAgent
 import threading
+from gardendesigner.viztracer import visualize
 class ThreadsPool(threading.Thread):
     def __init__(self, func, args=()):
         super(ThreadsPool, self).__init__()
@@ -93,7 +94,23 @@ def main(args,
                     parameters.update(attribute_parameters)
                     total_feedback = terrain_feedback + "\n" + inf_feedback + "\n" + attribute_feedback # "OK" in default
                     print(parameters)
-                    terrain = terraingenerationagent.execute(args, parameters) # grid
+                    terrain = terraingenerationagent._algorithm(args, parameters)
+                    # TODO 完成可视化类
+                    visualize(
+                        terrain,
+                        [[0 for i in range(H)] for j in range(W)],
+                        [],
+                        [],
+                        [],
+                        [],
+                        color_set,
+                        terrain_label_set,
+                        content_marker_set,
+                        content_label_set,
+                        "coarse_1",
+                    )
+                    
+
                 else:
                     pass
             
