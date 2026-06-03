@@ -1,8 +1,11 @@
 from typing import List,Callable,Tuple
-from gardendesigner.algorithm import Algorithm
+from gardendesigner.algorithm import BaseAlgorithm
 from copy import deepcopy
 import random
-class GeneticAlgorithm(Algorithm):
+from math import (
+    floor,
+    ceil)
+class GeneticAlgorithm(BaseAlgorithm):
     def __init__(self):
         super().__init__()
     def excute(self,
@@ -13,7 +16,7 @@ class GeneticAlgorithm(Algorithm):
                 return self.genetic_algorithm(
                     parameters,
                     5,
-                    terrain_fitness,
+                    self.terrain_fitness,
                     self.terrain_evo,
                     100,
                     self.baseparam.MAX_GENERATION,
@@ -25,7 +28,7 @@ class GeneticAlgorithm(Algorithm):
                 return self.genetic_algorithm(
                     parameters,
                     5,
-                    terrain_fitness_with_loc,
+                    self.terrain_fitness_with_loc,
                     self.terrain_evo,
                     100,
                     self.baseparam.MAX_GENERATION,
@@ -74,7 +77,7 @@ class GeneticAlgorithm(Algorithm):
             fitness_sum = 0 
             local_max_fitness = 0
             for j in range(self.baseparam.POPULATION_SIZE):
-                # 判断是否启用conlan
+            # 判断是否启用conlan
                 if is_use_conlan:
                     fitness = fitness_func(population[j], parameters, terrain, infrastructure)
                 else:
@@ -105,7 +108,7 @@ class GeneticAlgorithm(Algorithm):
             fitness_list_with_index.sort(key=lambda x: x[1], reverse=True) # 
             # 将建立得分和其原始对应的位置
             len_now = len(new_population)
-            for j in range(self.baseparam.POPULATION_SIZE - len_now - self.baseparamPRESERVE_BEST_SIZE):
+            for j in range(self.baseparam.POPULATION_SIZE - len_now - self.baseparam.PRESERVE_BEST_SIZE):
                 new_population.append(deepcopy(population[fitness_list_with_index[j][0]]))
             # 如果淘汰足够多 按顺序填充
             len_now = len(new_population)
@@ -177,7 +180,6 @@ class GeneticAlgorithm(Algorithm):
         # TODO 交叉核心
         randx, randy, comp_idx1, comp_idx2, type1, type2 = [None for _ in range(6)]
         success = False
-        comp_idx1, comp_idx2 = None, None
         for k in range(10): # 随机获取最多10次
             randx, randy = random.randint(0, self.baseparam.W - 1), random.randint(0, self.baseparam.H - 1)
             comp_idx1, comp_idx2 = None, None
@@ -413,6 +415,375 @@ class GeneticAlgorithm(Algorithm):
     def terrain_fitness(self,
                         grid: List[List[int]],
                         parameters: dict,
-                        terrain, infrastructure) -> float:
+                        terrain,
+                        infrastructure) -> float:
         """打分函数"""
+        """使用完整版本的打分函数"""
+        # 判断是否联通
         connected, _ = self.get_boundary(grid)
+        
+        if not connected:
+            return 0
+        
+        components = self.find_connected_components(grid, {}, 5)
+        terrain_exist, terrain_region_num, terrain_region_area, terrain_region_single_area = (
+            deepcopy(parameters["terrain_exist"]),
+            deepcopy(parameters["terrain_region_num"]),
+            deepcopy(parameters["terrain_region_area"]),
+            deepcopy(parameters["terrain_region_single_area"]),
+        )
+
+
+        loss = 1
+        for tp in range(5):# 对于每个地形
+            exist, region_num, region_area, region_single_area = (
+                terrain_exist[tp],
+                terrain_region_num[tp],
+                terrain_region_area[tp],
+                terrain_region_single_area[tp],
+            )
+
+            real_region_num = len(components[tp]) # 判断
+
+            if exist == -1: 
+                # 默认存在
+                exist = 1
+            if exist == 0 and real_region_num > 0:
+                # 不应该存在但存在
+                loss += 20
+                continue
+            elif exist == 1 and real_region_num == 0:
+                # 应该存在但不存在
+                loss += 20
+                continue
+            if real_region_num == 0:# 不存在
+                continue
+
+            if region_num == -1:
+                region_num = (-1, -1)
+            # 修正格式
+
+            lowerline, highline = region_num
+            # 修正上下限数值关系情况
+            if tp == 1 and highline == -1:
+                # 如果为水源类型 默认上为 3 如果上下限存在数值差异 那么将上限转化为 max(lowerline, 3)
+                highline = 3 if lowerline == -1 else max(lowerline, 3)
+            elif tp == 2 and highline == -1:
+                highline = 4 if lowerline == -1 else max(lowerline, 4)
+            elif tp == 3 and highline == -1:
+                highline = 3 if lowerline == -1 else max(lowerline, 3)
+            elif tp == 4 and highline == -1:
+                highline = 3 if lowerline == -1 else max(lowerline, 3)
+            
+            if lowerline != -1 and real_region_num < lowerline:
+                loss += min(lowerline - real_region_num, 5)
+                # 如果低于最小loss增加
+            if highline != -1 and real_region_num > highline:
+                loss += min(real_region_num - highline, 5)
+                # 如果搞于最高loss增加
+            
+
+            if region_area == -1:
+                region_area = (-1, -1)
+            # 修正格式
+            real_region_area = 0
+
+            for component in components[tp]:
+                real_region_area += len(component)
+            real_region_area /= self.baseparam.W * self.baseparam.H
+            # 计算占比
+            lowerline, highline = region_area
+            # 修正上限界默认值
+            if tp == 0:
+                if highline == -1:
+                    highline = 0.2 if lowerline == -1 else max(lowerline, 0.2)
+                if lowerline == -1:
+                    lowerline = 0.05 if highline == -1 else min(highline, 0.05)
+            elif tp == 1:
+                if highline == -1:
+                    highline = 0.6 if lowerline == -1 else max(lowerline, 0.6)
+                if lowerline == -1:
+                    lowerline = 0.2 if highline == -1 else min(highline, 0.2)
+            elif tp == 2:
+                if highline == -1:
+                    highline = 0.7 if lowerline == -1 else max(lowerline, 0.7)
+                if lowerline == -1:
+                    lowerline = 0.3 if highline == -1 else min(highline, 0.3)
+            elif tp == 3:
+                if highline == -1:
+                    highline = 0.4 if lowerline == -1 else max(lowerline, 0.4)
+                if lowerline == -1:
+                    lowerline = 0.1 if highline == -1 else min(highline, 0.1)
+            elif tp == 4:
+                if highline == -1:
+                    highline = 0.35 if lowerline == -1 else max(lowerline, 0.35)
+                if lowerline == -1:
+                    lowerline = 0.15 if highline == -1 else min(highline, 0.15)
+            # 更新loss
+            if lowerline != -1 and real_region_area < lowerline:
+                loss += min((lowerline - real_region_area) * 100, 5)
+            if highline != -1 and real_region_area > highline:
+                loss += min((real_region_area - highline) * 100, 5)
+
+            if region_single_area == -1:
+                region_single_area = (-1, -1)
+            real_region_single_area = []
+            for component in components[tp]:
+                real_region_single_area.append(len(component) / self.baseparam.W / self.baseparam.H)
+            lowerline, highline = region_single_area
+            if tp == 1 and lowerline == -1:
+                lowerline = 0.02 if highline == -1 else min(highline, 0.02)
+            elif tp == 2 and lowerline == -1:
+                lowerline = 0.02 if highline == -1 else min(highline, 0.02)
+            elif tp == 3 and lowerline == -1:
+                lowerline = 0.01 if highline == -1 else min(highline, 0.01)
+            elif tp == 4 and lowerline == -1:
+                lowerline = 0.02 if highline == -1 else min(highline, 0.02)
+            # 更新loss
+            local_loss = 0
+            for area in real_region_single_area:
+                if lowerline != -1 and area < lowerline:
+                    local_loss += min((lowerline - area) * 100, 2)
+                if highline != -1 and area > highline:
+                    local_loss += min((area - highline) * 100, 2)
+            loss += min(local_loss, 5)
+
+
+        dx_dys = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        adjacent_types = [[] for _ in range(5)]
+        land_in_lake_count = 0
+
+        for tp in range(5):
+            for component in components[tp]:
+                types_count = [0 for _ in range(6)]
+                # 统计该地形区域下的周围数据地形类型
+                for x, y in component:
+                    for dx, dy in dx_dys:
+                        new_x, new_y = x + dx, y + dy
+                        if 0 <= new_x < self.baseparam.W and 0 <= new_y < self.baseparam.H:
+                            if (new_x, new_y) not in component:
+                                types_count[grid[new_x][new_y]] += 1
+                        else:
+                            types_count[-1] += 1
+                adjacent_types[tp].append(types_count)
+                if tp == 0:
+                    if types_count[-1] == 0: # 未使用的地形需要靠墙
+                        loss += min(types_count[1] * 0.8, 15)
+                elif tp == 1:
+                    if types_count[4] > 0:
+                        # 如果湖旁边是建筑
+                        loss += min(types_count[4] * 0.3, 5)
+                    if types_count[0] + types_count[-1] > 0:
+                        # 如果旁边存在空地或者达到边界
+                        loss += min((types_count[0] + types_count[-1]) * 0.2, 3)
+                elif tp == 2 or tp == 3:
+                    if (
+                        types_count[0] + types_count[-1] + types_count[2] + types_count[3] + types_count[4] == 0
+                        and len(component) / (self.baseparam.W * self.baseparam.H) < 0.02
+                    ):
+                        land_in_lake_count += 1
+                        # land在湖中间
+                elif tp == 4:
+                        if types_count[0] + types_count[-1] > 0:
+                            loss += min((types_count[0] + types_count[-1]) * 0.3, 5)        
+                
+        lake_count = 0
+        for component in components[1]:
+            if len(component) / (self.baseparam.W * self.baseparam.H) > 0.08:
+                # 判断湖泊数量
+                lake_count += 1
+        if land_in_lake_count < lake_count:
+            loss += min((lake_count - land_in_lake_count) * 2, 5)
+
+        fitness = 100 / loss
+        return fitness
+    def terrain_fitness_with_loc(self,
+                                 grid: List[List[int]],
+                                 parameters: dict,
+                                 terrain,
+                                 infrastructure,
+                                 generation: int) -> float:
+        """打分函数"""
+        """非完整启动版本"""
+        # 判断是否联通
+        connected, _ = self.get_boundary(grid)
+        
+        if not connected:
+            return 0
+        
+        components = self.find_connected_components(grid, {}, 5)
+        terrain_exist, terrain_region_num, terrain_region_area, terrain_region_single_area = (
+            deepcopy(parameters["terrain_exist"]),
+            deepcopy(parameters["terrain_region_num"]),
+            deepcopy(parameters["terrain_region_area"]),
+            deepcopy(parameters["terrain_region_single_area"]),
+        )
+        loss = 1
+
+        for tp in range(5):
+            exist, region_num, region_area, region_single_area = (
+                terrain_exist[tp],
+                terrain_region_num[tp],
+                terrain_region_area[tp],
+                terrain_region_single_area[tp],
+            )
+            real_region_num = len(components[tp])
+            if tp in [1,2,3] :
+                exist = 1
+            # 如果为1,2,3 那么必须存在
+            
+            if exist == -1:
+                exist = 1
+            if exist == 0 and real_region_num > 0:
+                loss += 20
+                continue
+            elif exist == 1 and real_region_num == 0:
+                loss += 20
+                continue
+            if real_region_num == 0:
+                continue
+
+            if region_num == -1:
+                region_num = (-1, -1)
+            # 修正格式
+            lowerline, highline = region_num
+            # 修正上下限数值关系情况
+            if tp == 1 and highline == -1:
+                # 如果为水源类型 默认上为 1 如果上下限存在数值差异 那么将上限转化为 max(lowerline, 3)
+                highline = 1 if lowerline == -1 else max(lowerline, 3)
+            elif tp == 2 and highline == -1:
+                highline = 2 if lowerline == -1 else max(lowerline, 2)
+            elif tp == 3 and highline == -1:
+                highline = 3 if lowerline == -1 else max(lowerline, 3)
+            elif tp == 4 and highline == -1:
+                highline = 3 if lowerline == -1 else max(lowerline, 3)
+            
+            if lowerline != -1 and real_region_num < lowerline:
+                loss += min(lowerline - real_region_num, 5)
+                # 如果低于最小loss增加
+            if highline != -1 and real_region_num > highline:
+                loss += min(real_region_num - highline, 5)
+                # 如果搞于最高loss增加
+            
+            
+            if region_area == -1:
+                region_area = (-1, -1)
+            # 修正格式
+            real_region_area = 0
+
+            for component in components[tp]:
+                real_region_area += len(component)
+            real_region_area /= self.baseparam.W * self.baseparam.H
+            # 计算占比
+            lowerline, highline = region_area
+            # 修正上限界默认值
+            if tp == 0:
+                if highline == -1:
+                    highline = 0.15 if lowerline == -1 else max(lowerline, 0.15)
+                if lowerline == -1:
+                    lowerline = 0.05 if highline == -1 else min(highline, 0.05)
+            elif tp == 1:
+                if highline == -1:
+                    highline = 0.4 if lowerline == -1 else max(lowerline, 0.4)
+                if lowerline == -1:
+                    lowerline = 0.2 if highline == -1 else min(highline, 0.2)
+            elif tp == 2:
+                if highline == -1:
+                    highline = 0.3 if lowerline == -1 else max(lowerline, 0.3)
+                if lowerline == -1:
+                    lowerline = 0.1 if highline == -1 else min(highline, 0.1)
+            elif tp == 3:
+                if highline == -1:
+                    highline = 0.5 if lowerline == -1 else max(lowerline, 0.5)
+                if lowerline == -1:
+                    lowerline = 0.2 if highline == -1 else min(highline, 0.2)
+            elif tp == 4:
+                if highline == -1:
+                    highline = 0 if lowerline == -1 else max(lowerline, 0)
+                if lowerline == -1:
+                    lowerline = 0 if highline == -1 else min(highline, 0)
+                # NOTE 这里官方代码的注释和代码不符合 我认为是取消高地
+            # 更新loss
+            if lowerline != -1 and real_region_area < lowerline:
+                loss += min((lowerline - real_region_area) * 100, 5)
+            if highline != -1 and real_region_area > highline:
+                loss += min((real_region_area - highline) * 100, 5)
+            if tp == 1:
+                # 水源处于中心得分
+                for component in components[tp]:
+                    center_pixel_loss = 10
+                    centering_pixel_count = 0
+                    for x, y in component:
+                        split_W = floor(self.baseparam.W/3)
+                        split_H = floor(self.baseparam.H/3)
+                        if ceil(self.baseparam.W/2-split_W)<= x < floor(self.baseparam.W/2+split_W) and ceil(self.baseparam.H/2-split_H)<= y < floor(self.baseparam.H/2+split_H):
+                            centering_pixel_count +=1
+                    if centering_pixel_count >=18:
+                        center_pixel_loss = 0
+                    loss += center_pixel_loss
+            
+            if region_single_area == -1:
+                region_single_area = (-1, -1)
+            real_region_single_area = []
+            for component in components[tp]:
+                real_region_single_area.append(len(component) / self.baseparam.W / self.baseparam.H)
+            lowerline, highline = region_single_area
+            if tp == 1 and lowerline == -1:
+                lowerline = 0.02 if highline == -1 else min(highline, 0.02)
+            elif tp == 2 and lowerline == -1:
+                lowerline = 0.01 if highline == -1 else min(highline, 0.01)
+            elif tp == 3 and lowerline == -1:
+                lowerline = 0.03 if highline == -1 else min(highline, 0.03)
+            elif tp == 4 and lowerline == -1:
+                lowerline = 0.00 if highline == -1 else min(highline, 0.00)
+            local_loss = 0
+            for area in real_region_single_area:
+                if lowerline != -1 and area < lowerline:
+                    local_loss += min((lowerline - area) * 100, 2)
+                if highline != -1 and area > highline:
+                    local_loss += min((area - highline) * 100, 2)
+            loss += min(local_loss, 5)
+
+        dx_dys = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        adjacent_types = [[] for _ in range(5)]
+        land_in_lake_count = 0
+        for tp in range(5):
+            for component in components[tp]:
+                types_count = [0 for _ in range(6)]
+                for x, y in component:
+                    for dx, dy in dx_dys:
+                        new_x, new_y = x + dx, y + dy
+                        if 0 <= new_x < self.baseparam.W and 0 <= new_y < self.baseparam.H:
+                            if (new_x, new_y) not in component:
+                                types_count[grid[new_x][new_y]] += 1
+                        else:
+                            types_count[-1] += 1 
+                adjacent_types[tp].append(types_count)
+                if tp == 0:
+                    if types_count[-1] == 0: 
+                        loss += min(types_count[1] * 0.8, 15)
+                elif tp == 1:
+                    if types_count[0] + types_count[-1] > 0:
+                        loss += min((types_count[0] + types_count[-1]) * 0.2, 3)
+                elif tp == 2 or tp == 3:
+                    if (
+                        types_count[0] + types_count[-1] + types_count[2] + types_count[3] + types_count[4] == 0
+                        and len(component) / (self.baseparam.W * self.baseparam.H) < 0.02
+                    ):
+                        land_in_lake_count += 1
+                elif tp == 4:
+                    if types_count[0] + types_count[-1] > 0:
+                        loss += min((types_count[0] + types_count[-1]) * 0.3, 5)
+       
+        lake_count = 0
+        for component in components[1]:
+            if len(component) / (self.baseparam.W * self.baseparam.H) > 0.08:
+                lake_count += 1
+        if land_in_lake_count < lake_count:
+            loss += min((lake_count - land_in_lake_count) * 2, 5)
+        fitness = 100 / loss
+        # NOTE 本部分和完整除了部分数据基本一样
+        # 核心修正在存在了增加以水为中心的loss函数
+        # 在原始论文中没有使用完整的部分
+        return fitness
+                

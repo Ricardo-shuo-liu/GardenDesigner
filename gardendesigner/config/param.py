@@ -49,6 +49,7 @@ class GetEnvParam():
         BASE_URL = os.getenv(key="BASE_URL")
         if BASE_URL:
             return BASE_URL
+        return None
 class BaseParam():
     MAX_GENERATION:Annotated[int,"最多进化多少代"] = 100
     MUTATION_RATE:Annotated[float,"变异概率"]= 0.7

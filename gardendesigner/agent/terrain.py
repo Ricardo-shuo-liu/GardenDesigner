@@ -100,3 +100,6 @@ class TerrainGenerationAgent(BaseAgent):
             parameters=parameters
         )
         # 调用算法
+    def execute(self, user_promot):
+        return super().execute(user_promot)
+        
